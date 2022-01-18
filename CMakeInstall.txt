@@ -1,0 +1,2 @@
+pragma_install_create_directory(modules/python)
+pragma_install_lib("${CMAKE_CURRENT_BINARY_DIR}/modules/pr_python/${CONFIG_BUILD_TYPE}/pr_python${OS_LIB_BIN_EXT}" "modules/python/" OPTIONAL)
