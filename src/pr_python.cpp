@@ -32,6 +32,19 @@ extern "C"
 		PySys_SetArgv(wargsp.size(),wargsp.data());
 		return PyRun_SimpleFile(f.get(),fileName) == 0;
 	}
+	bool PRAGMA_EXPORT pr_py_get_last_error(std::string &outErr)
+	{
+		PyRun_SimpleString("import traceback, sys");
+		PyRun_SimpleString("trace = ''.join(traceback.format_exception(sys.last_type, sys.last_value, sys.last_traceback))");
+		PyObject *mainModule = PyImport_AddModule("__main__");
+		PyObject *var = PyObject_GetAttrString(mainModule, "trace");
+		if(!var)
+			return false;
+		Py_ssize_t size;
+		const char* data = PyUnicode_AsUTF8AndSize(var, &size);
+		outErr = std::string{data, static_cast<size_t>(size)};
+		return true;
+	}
 	bool PRAGMA_EXPORT pragma_attach(std::string &outErr)
 	{
 		Py_Initialize();
