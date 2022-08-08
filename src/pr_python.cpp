@@ -37,6 +37,8 @@ extern "C"
 		PyRun_SimpleString("import traceback, sys");
 		PyRun_SimpleString("trace = ''.join(traceback.format_exception(sys.last_type, sys.last_value, sys.last_traceback))");
 		PyObject *mainModule = PyImport_AddModule("__main__");
+		if(!mainModule)
+			return false;
 		PyObject *var = PyObject_GetAttrString(mainModule, "trace");
 		if(!var)
 			return false;
@@ -44,6 +46,11 @@ extern "C"
 		const char* data = PyUnicode_AsUTF8AndSize(var, &size);
 		outErr = std::string{data, static_cast<size_t>(size)};
 		return true;
+	}
+	void PRAGMA_EXPORT pr_py_reload()
+	{
+		Py_Finalize();
+		Py_Initialize();
 	}
 	bool PRAGMA_EXPORT pragma_attach(std::string &outErr)
 	{
