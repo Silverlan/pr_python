@@ -1,0 +1,84 @@
+name: Build Linux
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+concurrency:
+  group: environment-lin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build - ${{ matrix.config.os }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - os: ubuntu-22.04
+            name: "Ubuntu GCC-11"
+            artifact: "ubuntu_gcc.7z"
+            build_type: "RelWithDebInfo"
+            cc: "clang-14"
+            cxx: "clang++-14"
+            archiver: "7z a"
+            generators: "Unix Makefiles"
+            build_dir: 'build'
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+          
+      - name: Setup Pragma Module
+        id: pragma-cmake-defs
+        uses: Silverlan/common_actions/setup_pragma_module@main
+        with:
+          cc_version: ${{ matrix.cc }}
+          cxx_version: ${{ matrix.cxx }}
+
+      - name: Install Prerequisites
+        shell: bash
+        run: |
+          sudo apt install xorg-dev
+
+      - name: Download Pragma Binaries
+        shell: bash
+        run: |
+          mkdir pragma_lib
+          cd pragma_lib
+          wget https://github.com/Silverlan/pragma/releases/download/latest/binaries_linux64.tar.gz
+          tar xvfz binaries_linux64.tar.gz
+          rm -f binaries_linux64.tar.gz
+
+      - name: Build
+        shell: bash
+        run: |
+          cmake -G "Unix Makefiles" \
+            ${{ steps.pragma-cmake-defs.outputs.cmake_defs }} \
+            -DDEPENDENCY_ICLIENT_LIBRARY="./pragma_lib/lib/libiclient.so" \
+            -DDEPENDENCY_OPENVR_LIBRARY="./pragma_lib/lib/libiclient.so" \
+            -DDEPENDENCY_GLFW_LIBRARY="./pragma_lib/lib/libglfw.so" \
+            -DDEPENDENCY_IGLFW_LIBRARY="./pragma_lib/lib/libiglfw.so" \
+            -DDEPENDENCY_PROSPER_LIBRARY="./pragma_lib/lib/libprosper.so" \
+            -DDEPENDENCY_CLIENT_LIBRARY="./pragma_lib/lib/libclient.so" \
+            -DDEPENDENCY_WGUI_LIBRARY="./pragma_lib/lib/libwgui.so" \
+            -DDEPENDENCY_LUAJIT_LIBRARY="./pragma_lib/lib/libluajit-p.so" \
+            -DDEPENDENCY_OPENVR_INCLUDE="third_party/openvr/headers/" \
+            -DDEPENDENCY_OPENVR_LIBRARY="./third_party/openvr/lib/linux64/libopenvr_api.so"
+          cmake --build ./ --verbose --target pr_openvr
+
+      - name: Create Release Files
+        shell: bash
+        run: |
+          mkdir release
+          mkdir release/modules
+          rsync --mkpath ./libpr_openvr.so release/modules/openvr/
+          rsync --mkpath ./third_party/openvr/lib/linux64/libopenvr_api.so release/modules/openvr/
+          
+      - name: Release Binaries
+        uses: Silverlan/common_actions/release_nightly_binaries@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit: ${{ github.ref_name }}
