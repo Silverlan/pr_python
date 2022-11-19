@@ -1,4 +1,4 @@
-name: Build Linux
+name: Build Windows
 on:
   push:
     branches: [ main ]
@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 concurrency:
-  group: environment-lin-${{ github.ref }}
+  group: environment-win-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -17,14 +17,15 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - os: ubuntu-22.04
-            name: "Ubuntu GCC-11"
-            artifact: "ubuntu_gcc.7z"
+          - os: windows-latest
+            name: "Windows x64 MSVC"
+            artifact: "Windows-MSVC.tar.xz"
             build_type: "RelWithDebInfo"
-            cc: "clang-14"
-            cxx: "clang++-14"
+            environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
+            cc: "cl"
+            cxx: "cl"
             archiver: "7z a"
-            generators: "Unix Makefiles"
+            generators: "Visual Studio 17 2022"
             build_dir: 'build'
     steps:
       - uses: actions/checkout@v2
@@ -38,40 +39,26 @@ jobs:
           cc_version: ${{ matrix.cc }}
           cxx_version: ${{ matrix.cxx }}
           
-      - name: Install Prerequisites
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install python3.6
-          
-      - name: Install Python-dev
-        shell: bash
-        run: |
-          sudo add-apt-repository ppa:deadsnakes/ppa   
-          sudo apt-get update   
-          sudo apt install libpython3.10-dev
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10' 
           
       - name: Build
         shell: bash
         run: |
           cmake -G "Unix Makefiles" \
             ${{ steps.pragma-cmake-defs.outputs.cmake_defs }} \
-            -DDEPENDENCY_PYTHON_INCLUDE="/usr/include/python3.10/" \
-            -DDEPENDENCY_PYTHON_LIBRARY="/usr/lib/python3.10/config-3.10-x86_64-linux-gnu/libpython3.10.so"
+            -DDEPENDENCY_PYTHON_INCLUDE="$pythonLocation/include/" \
+            -DDEPENDENCY_PYTHON_LIBRARY="$pythonLocation/libs/python310.lib"
           cmake --build ./ --verbose --target pr_python
-
-      #- uses: mxschmitt/action-tmate@v3
-      #  name: CI
 
       - name: Create Release Files
         shell: bash
         run: |
           mkdir release
           mkdir release/modules
-          rsync --mkpath ./libpr_python.so release/modules/python/
-          rsync --mkpath --links /usr/lib/python3.10/config-3.10-x86_64-linux-gnu/libpython3.10.so release/modules/python/
-          rsync --mkpath --links /usr/lib/x86_64-linux-gnu/libpython3.10.so.1 release/modules/python/
-          rsync --mkpath /usr/lib/x86_64-linux-gnu/libpython3.10.so.1.0 release/modules/python/
+          rsync --mkpath ./pr_python.dll release/modules/python/
+          rsync --mkpath $pythonLocation/python310.dll release/modules/python/
           
       - name: Release Binaries
         uses: Silverlan/common_actions/release_nightly_binaries@main

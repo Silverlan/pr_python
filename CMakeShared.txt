@@ -239,10 +239,10 @@ set(DEFINITIONS
 )
 # BOOST_ALL_DYN_LINK
 
-if(WIN32)
-	add_compile_options(/wd4251)
-	add_compile_options(/W1)
-endif()
+#if(WIN32)
+#	add_compile_options(/wd4251)
+#	add_compile_options(/W1)
+#endif()
 
 SET(SOURCE_PATHS)
 function(add_source_path PATH)
@@ -302,9 +302,9 @@ function(register_pragma_module IDENTIFIER)
 	list(APPEND LIB_SRC_FILES ${SRC_FILES_CUSTOM})
 	add_library(${PROJ_NAME} ${LIB_TYPE} ${LIB_SRC_FILES})
 
-	if(WIN32)
-		target_compile_options(${PROJ_NAME} PRIVATE /wd4251)
-	endif()
+	#if(WIN32)
+	#	target_compile_options(${PROJ_NAME} PRIVATE /wd4251)
+	#endif()
 
 	list(LENGTH SRC_FILES_CUSTOM count)
 	math(EXPR count "${count}-1")
